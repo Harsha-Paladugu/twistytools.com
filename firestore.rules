@@ -1,0 +1,204 @@
+rules_version = '2';
+
+// TwistyTools — shared Firestore security rules for the `twistytools` project
+// serving pyraminx.twistytools.com, skewb.twistytools.com, fto.twistytools.com.
+//
+// This file lives in the HUB repo (twistytools.com) and is the ONLY rules
+// source for the shared project: a rules deploy replaces the project's entire
+// ruleset, so exactly one repo may own it. Deploy from the hub repo with:
+//
+//   firebase deploy --only firestore:rules
+//
+// Schema (collection namespacing — named databases get no free tier, so one
+// database, one ruleset parameterized on {puzzle}):
+//
+//   puzzles/{puzzle}/solutions/{id}
+//   puzzles/{puzzle}/meta/{doneMap,stats}
+//   puzzles/{puzzle}/moderators/{uid}
+//   puzzles/{puzzle}/moderatorInvites/{email}
+//   users/{uid}                    global account doc (own only)
+//   users/{uid}/puzzles/{puzzle}   per-puzzle progress (own only)
+//   admins/{uid}                   global admin allowlist, all sites
+//
+// Ported from pyraminx.net's post-audit rules (2026-07-10 fixes: meta doc
+// shape/bounds pinning, single-use moderator invites, reviewedBy bound to the
+// acting moderator's uid) with each puzzle's constants in cfg() below. FTO has
+// no census, so it has no cfg() entry: census writes under puzzles/fto fail
+// the lookup and are denied; FTO uses only users/{uid} (+ its puzzles/fto
+// progress doc).
+//
+// BOOTSTRAP: create the first `admins/{your-uid}` document in the Firebase
+// console (console writes bypass rules) before relying on admin access; after
+// that, existing admins can manage the collection.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAdmin() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+    // moderator of THIS puzzle; admins moderate everywhere
+    function isMod(puzzle) {
+      return isAdmin()
+        || (request.auth != null
+            && exists(/databases/$(database)/documents/puzzles/$(puzzle)/moderators/$(request.auth.uid)));
+    }
+
+    // Per-puzzle census constants, all fixed puzzle math from each site's
+    // engine.js. nslots bounds state indexes: [0, nslots). statsTotal is the
+    // canonical class count; doneB64Max is that count as a base64-encoded
+    // bitmap: 4 * ceil(ceil(total/8) / 3) characters. fields whitelists the
+    // solution-create payload (skewb adds `notation`: its algs render in WCA
+    // or NS notation). A puzzle without a census (fto) has no entry — cfg()
+    // errors on lookup and the enclosing rule denies.
+    function cfg(puzzle) {
+      return {
+        'pyraminx': {
+          'nslots': 3732480,        // 720*64*27*3
+          'statsTotal': 78012,
+          'doneB64Max': 13004,      // ceil(78012/8)=9752 bytes -> 13004 b64 chars
+          'fields': ['uid', 'status', 'createdAt', 'pairId', 'classId', 'partnerId',
+                     'scramble', 'solution', 'moves', 'name', 'showName']
+        },
+        'skewb': {
+          'nslots': 9447840,        // 360*12*2187
+          'statsTotal': 132315,
+          'doneB64Max': 22056,      // ceil(132315/8)=16540 bytes -> 22056 b64 chars
+          'fields': ['uid', 'status', 'createdAt', 'pairId', 'classId', 'partnerId',
+                     'scramble', 'solution', 'notation', 'moves', 'name', 'showName']
+        }
+      }[puzzle];
+    }
+
+    // per-user data: global account doc + per-puzzle progress (own docs only)
+    match /users/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+
+      match /puzzles/{puzzle} {
+        allow read, write: if request.auth != null && request.auth.uid == uid
+          && puzzle in ['pyraminx', 'skewb', 'fto'];
+      }
+    }
+
+    match /puzzles/{puzzle}/solutions/{id} {
+      allow read: if resource.data.status == 'approved'
+        || isMod(puzzle)
+        || (request.auth != null && request.auth.uid == resource.data.uid);
+      // Create: only a moderator may submit, and only their own pending solution.
+      // The field set is whitelisted per puzzle (no extra/oversized docs) and
+      // every field the client writes (js/oo.js submit()) is type/size
+      // validated. skewb's `notation` is required there and denied elsewhere
+      // (hasOnly). NOTE: the "max 2 approved solutions per scramble" cap can't
+      // be enforced here — rules can't count sibling docs — so it's applied
+      // app-side (submit form gating + the moderator approval step).
+      allow create: if isMod(puzzle)
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.keys().hasOnly(cfg(puzzle).fields)
+        && request.resource.data.createdAt == request.time
+        && (!('notation' in cfg(puzzle).fields)
+            || request.resource.data.notation in ['wca', 'ns'])
+        && request.resource.data.moves is int
+        && request.resource.data.moves >= 1 && request.resource.data.moves <= 15
+        && request.resource.data.solution is string
+        && request.resource.data.solution.size() > 0
+        && request.resource.data.solution.size() < 300
+        && request.resource.data.scramble is string
+        && request.resource.data.scramble.size() > 0
+        && request.resource.data.scramble.size() < 300
+        && request.resource.data.name is string
+        && request.resource.data.name.size() < 256
+        && request.resource.data.showName is bool
+        // privacy: approved docs are world-readable, so when the submitter opts
+        // out of showing their name, nothing identifying may be persisted at all
+        && (request.resource.data.showName == true || request.resource.data.name == '')
+        && request.resource.data.classId is int
+        && request.resource.data.classId >= 0
+        && request.resource.data.classId < cfg(puzzle).nslots
+        && request.resource.data.partnerId is int
+        && request.resource.data.partnerId >= 0
+        && request.resource.data.partnerId < cfg(puzzle).nslots
+        && request.resource.data.pairId is int
+        && request.resource.data.pairId >= 0
+        && request.resource.data.pairId < cfg(puzzle).nslots;
+      // Update: a moderator may only flip the review fields (status -> approved/
+      // rejected, plus reviewedBy) on a still-pending doc; an admin may edit more
+      // broadly if ever needed. This stops a moderator account from rewriting
+      // submitted solution content. reviewedBy must be the ACTING moderator's
+      // uid: binding it stops audit-trail forgery, and a uid (unlike an email)
+      // is safe on a world-readable doc.
+      allow update: if isAdmin()
+        || (isMod(puzzle)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'reviewedBy'])
+            && resource.data.status == 'pending'
+            && request.resource.data.status in ['approved', 'rejected']
+            && request.resource.data.reviewedBy == request.auth.uid);
+      // Delete stays admin-only ON PURPOSE: it is the documented recovery for
+      // the racy approval cap. Deleting an approved solution leaves the derived
+      // meta docs stale — the Moderation tab's admin "Recompute solved bitmap"
+      // action rebuilds both from the surviving approved docs.
+      allow delete: if isAdmin();
+    }
+
+    // World-readable aggregates driving each public homepage (progress bar +
+    // solved map). Only the moderator approval transaction writes them, so pin
+    // each doc to that exact shape — a moderator keeps the census current but
+    // can't park arbitrary or oversized blobs in public documents.
+    match /puzzles/{puzzle}/meta/{doc} {
+      allow read: if true;
+    }
+    match /puzzles/{puzzle}/meta/doneMap {
+      allow create, update: if isMod(puzzle)
+        && request.resource.data.keys().hasOnly(['b64'])
+        && request.resource.data.b64 is string
+        && request.resource.data.b64.size() <= cfg(puzzle).doneB64Max;
+    }
+    match /puzzles/{puzzle}/meta/stats {
+      allow create, update: if isMod(puzzle)
+        && request.resource.data.keys().hasOnly(['done', 'total'])
+        && request.resource.data.done is int
+        && request.resource.data.done >= 0
+        && request.resource.data.done <= cfg(puzzle).statsTotal
+        && request.resource.data.total == cfg(puzzle).statsTotal;
+    }
+
+    match /puzzles/{puzzle}/moderators/{uid} {
+      allow read: if isAdmin() || (request.auth != null && request.auth.uid == uid);
+      // Self-accept an invite for THIS puzzle. Requirements, by what each defends:
+      //  - email_verified: the email claim is the whole basis for the match, so a
+      //    provider issuing unverified-email tokens must not satisfy it.
+      //  - lower(): invite ids are lowercased emails (js/oo.js invite()), so a
+      //    mixed-case Google account still matches instead of being locked out.
+      //  - content pin: the stored doc can't spoof the email the admin list shows.
+      allow create: if isAdmin()
+        || (request.auth != null && request.auth.uid == uid
+            && request.auth.token.email_verified == true
+            && exists(/databases/$(database)/documents/puzzles/$(puzzle)/moderatorInvites/$(request.auth.token.email.lower()))
+            && request.resource.data.keys().hasOnly(['email', 'via'])
+            && request.resource.data.email == request.auth.token.email.lower()
+            && request.resource.data.via is string);
+      allow delete: if isAdmin();
+    }
+
+    match /puzzles/{puzzle}/moderatorInvites/{email} {
+      allow read: if isAdmin()
+        || (request.auth != null && request.auth.token.email_verified == true
+            && request.auth.token.email.lower() == email);
+      allow create, update: if isAdmin();
+      // admins manage invites; the invited (verified) user may delete their OWN
+      // invite to consume it on acceptance, so an invite is single-use and a
+      // later revoke can't be silently re-accepted.
+      allow delete: if isAdmin()
+        || (request.auth != null && request.auth.token.email_verified == true
+            && request.auth.token.email.lower() == email);
+    }
+
+    // admin allowlist: who isAdmin() trusts, across all sites. Bootstrap the
+    // first entry via the console; thereafter only existing admins can
+    // grant/revoke admin.
+    match /admins/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if isAdmin();
+    }
+  }
+}

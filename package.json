@@ -1,0 +1,14 @@
+{
+  "name": "twistytools-hub",
+  "private": true,
+  "version": "0.0.0",
+  "description": "twistytools.com hub: apex landing page plus the shared Firebase project's firestore.rules, rules tests, and migration scripts.",
+  "scripts": {
+    "test:rules": "firebase emulators:exec --only firestore \"node test/firestore.rules.test.mjs\""
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.0",
+    "firebase": "^12.0.0",
+    "firebase-tools": "^14.0.0"
+  }
+}
