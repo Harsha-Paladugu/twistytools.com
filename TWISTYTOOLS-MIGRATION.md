@@ -12,6 +12,33 @@ Pyraminx migrates last because it is the only site with real users.
 
 ---
 
+## ⚠ Status alert (2026-07-13): domain cutover ran ahead of the Firebase cutover
+
+The repo CNAME flips and old-domain 301s (parts of Phases 5 and 6) happened on
+2026-07-13, before Phases 2–4. Both old domains now redirect to the new
+subdomains, which still run against the OLD Firebase projects (fine for data,
+same backend). Two live problems until fixed:
+
+- [ ] **Sign-in is broken on both new origins.** The new subdomains are not in
+      the old projects' Auth authorized domains (verified via the
+      identitytoolkit config API 2026-07-13). Console fix, one minute each:
+      Authentication → Settings → Authorized domains — add
+      `pyraminx.twistytools.com` to `pyraminx-oo` and
+      `skewb.twistytools.com` to `skewbiks`.
+- [ ] **Only the root path redirects; every deep link 404s**
+      (pyraminx.net/oo.html, skewbiks.com/oo.html, etc. — launch links and
+      the ENG313 submission may point at these). Make the Cloudflare
+      redirects path-preserving: Rules → Redirect Rules → dynamic redirect,
+      match host `pyraminx.net` (and `www.pyraminx.net`), target expression
+      `concat("https://pyraminx.twistytools.com", http.request.uri.path)`,
+      preserve query string, 301. Same for skewbiks.com →
+      skewb.twistytools.com.
+- Demo-mode localStorage on the old origins is now stranded behind the
+  redirects (the planned "sign in to keep your progress" banner never
+  shipped before the flip). Nothing cheap recovers it.
+
+---
+
 ## Phase 0 — Inventory (15 min, Firebase console)
 
 - [ ] In the `skewbiks` project console, check **Authentication → Users** and
@@ -59,11 +86,11 @@ Pyraminx migrates last because it is the only site with real users.
       cards link to each site's current home; flip skewb/pyraminx links at
       their cutovers.)*
 - [x] DNS: apex + all three subdomains resolve via Cloudflare proxy as of
-      2026-07-13. fto.twistytools.com serves the FTO site; skewb. and
-      pyraminx. subdomains already serve live mirrors of skewbiks.com /
-      pyraminx.net (canonicals still point at the old domains, which keeps
-      SEO safe until cutover). The apex 404s until the hub repo gets its
-      CNAME + Pages setup.
+      2026-07-13. All four hostnames serve: the hub landing page on the apex,
+      and the three sites on their subdomains. The old domains 301 to the
+      subdomains (root path only — see the status alert). Canonical tags on
+      pyraminx and skewb still name the old domains; update at their Phase
+      5/6 canonical/OG passes.
 
 ## Phase 2 — Shared schema + rules (2–3 hrs, code)
 
@@ -111,15 +138,17 @@ admins/{uid}                     ← global; one bootstrap covers all sites
 
 ## Phase 5 — Skewb cutover (~1 hr)
 
-- [ ] Repo CNAME file → `skewb.twistytools.com`; enforce HTTPS once the cert
-      issues. Update canonical/OG/sitemap/robots to the new origin; rebuild
+- [~] Repo CNAME file → `skewb.twistytools.com`: **done on GitHub 2026-07-13**
+      (commit `cff87de`, made via Pages settings; the local clone is behind 1
+      and has unrelated uncommitted alg work — pull before working there).
+      Still to do: canonical/OG/sitemap/robots to the new origin; rebuild
       (the stamp pipeline handles asset hashes).
 - [ ] Merge skewb's config/refactor branch. If Phase 0 found real data, run the
       Phase 6 copy script pointed at `skewbiks` → `twistytools` first.
-- [ ] 301 `skewbiks.com` → `skewb.twistytools.com` at the registrar/Cloudflare
-      level (GitHub Pages can't serve the old domain *and* redirect it).
-- [ ] Flip the hub landing page's Skewb card from skewbiks.com to
-      skewb.twistytools.com (hub repo `index.html`).
+- [~] 301 `skewbiks.com` → `skewb.twistytools.com`: live 2026-07-13 but
+      root-only; must be path-preserving (see status alert).
+- [x] Flip the hub landing page's Skewb card from skewbiks.com to
+      skewb.twistytools.com (hub repo `index.html`) — done 2026-07-13.
 
 ## Phase 6 — Pyraminx cutover (half a day, the only one with users)
 
@@ -138,14 +167,17 @@ admins/{uid}                     ← global; one bootstrap covers all sites
       `firebase auth:import users.json --project twistytools`. Google-only
       users import clean with uids preserved (no hash params needed).
 - [ ] **Cutover, one deploy**: run auth import + data script, then merge the
-      branch (new config + namespaced paths + CNAME `pyraminx.twistytools.com`
-      + canonical/OG/sitemap updates + regenerated OG image), build, push.
+      branch (new config + namespaced paths + canonical/OG/sitemap updates +
+      regenerated OG image), build, push. *(The CNAME flip that was part of
+      this deploy already happened 2026-07-13, commit `7153894` — the site
+      already serves from pyraminx.twistytools.com against old Firebase.)*
 - [ ] Immediately deploy a **deny-all-writes** ruleset to old `pyraminx-oo`
       so cached pages can't write to the abandoned database (split-brain guard).
-- [ ] DNS: 301 `pyraminx.net` → `pyraminx.twistytools.com`. Keep long-term —
-      launch links and the ENG313 submission point at it.
-- [ ] Flip the hub landing page's Pyraminx card from pyraminx.net to
-      pyraminx.twistytools.com (hub repo `index.html`).
+- [~] DNS: 301 `pyraminx.net` → `pyraminx.twistytools.com`: live 2026-07-13
+      but root-only; must be path-preserving (see status alert). Keep
+      long-term — launch links and the ENG313 submission point at it.
+- [x] Flip the hub landing page's Pyraminx card from pyraminx.net to
+      pyraminx.twistytools.com (hub repo `index.html`) — done 2026-07-13.
 - [ ] Verify live: sign in (same uid as before), Moderation tab loads (proves
       `admins/{uid}` + rules), census renders, done-bitmap updates, trainer
       progress syncs.
