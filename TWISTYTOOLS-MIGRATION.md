@@ -125,11 +125,15 @@ admins/{uid}                     ← global; one bootstrap covers all sites
 
 - [ ] **Migration script** (hub repo, `firebase-admin`, service-account keys
       for both projects — works on Spark, no billing needed):
+      source preflight must pass before any copy: run
+      `node tools/scrub-legacy-pii.mjs` (pyraminx repo) against source, verify
+      zero remaining legacy-PII hits, and block migration on any hit;
       `users/{uid}` → account doc + `users/{uid}/puzzles/pyraminx`;
       `solutions` → `puzzles/pyraminx/solutions`; `meta/*` →
       `puzzles/pyraminx/meta/*`; `moderators` + `moderatorInvites` → under
       `puzzles/pyraminx/`; `admins` → `admins`. Build with `--dry-run` and a
-      doc-count report.
+      doc-count report. After copy, run a post-copy legacy-PII scan on target
+      and block cutover unless it reports zero hits.
 - [ ] **Auth**: `firebase auth:export users.json --project pyraminx-oo` →
       `firebase auth:import users.json --project twistytools`. Google-only
       users import clean with uids preserved (no hash params needed).
