@@ -25,9 +25,15 @@ same backend). Two live problems until fixed:
       verified via the identitytoolkit config API.
 - [ ] **Only the root path redirects; every deep link 404s**
       (pyraminx.net/oo.html, skewbiks.com/oo.html, etc. — launch links and
-      the ENG313 submission may point at these). Make the Cloudflare
-      redirects path-preserving: Rules → Redirect Rules → dynamic redirect,
-      match host `pyraminx.net` (and `www.pyraminx.net`), target expression
+      the ENG313 submission point at these). Root cause found 2026-07-13:
+      both old domains are on **GoDaddy nameservers using GoDaddy Domain
+      Forwarding**, which is a fixed-destination redirect with no
+      path/query preservation (deep paths 404 at its servers; HEAD gets
+      405). Fix: add pyraminx.net and skewbiks.com as free zones in the
+      Cloudflare account that already holds twistytools.com, switch
+      nameservers at GoDaddy, add a proxied dummy A record (192.0.2.1) for
+      apex + www, then one dynamic redirect rule per zone:
+      match `http.host in {"pyraminx.net" "www.pyraminx.net"}`, target
       `concat("https://pyraminx.twistytools.com", http.request.uri.path)`,
       preserve query string, 301. Same for skewbiks.com →
       skewb.twistytools.com.
