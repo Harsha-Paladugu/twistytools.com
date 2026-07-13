@@ -167,11 +167,33 @@ admins/{uid}                     ← global; one bootstrap covers all sites
 
 ## Phase 4 — FTO goes first (30 min, greenfield, zero risk)
 
-- [ ] Merge FTO's config change, `npm run build`, deploy.
-- [ ] Sign in on fto.twistytools.com, grab your uid from the About page, create
-      `admins/{your-uid}` in the console — once, for all three sites.
-- [ ] Verify: sign-in works, user doc writes land under the new schema, rules
-      deny what they should. This validates the whole shared stack.
+- [x] Merge FTO's config change, `npm run build`, deploy — done 2026-07-13.
+      (Merged together with the parallel session's 1LP alg commit; stamp
+      conflicts resolved by restamping; check:fresh passed; verified live:
+      fto.twistytools.com serves config.js?v=638e6cf4 → twistytools-3bf66.)
+- [ ] **Auth import BEFORE first sign-in (sequencing fix, found 2026-07-13):**
+      Phase 6's `auth:import` preserves old uids, but any Google sign-in on a
+      twistytools origin before the import mints a FRESH uid for that email;
+      the later import then collides (same email, two uids; migrated data
+      keys to the orphaned one). Nobody has signed in yet, so import NOW:
+      `firebase auth:export` from `pyraminx-oo` → `auth:import` into
+      `twistytools-3bf66` (Google-only users, uids preserved, invisible to
+      users). Skewbiks' 5 users can import in the same pass; overlapping
+      emails (the owner's own account) will be skipped and need a uid remap
+      in the Phase 5 data copy. *Needs explicit user authorization (user
+      table export/import).*
+- [ ] Create `admins/{uid}` — once, for all three sites. The owner's uid in
+      pyraminx-oo is `yajUvP6xgINGQ7vIVtfnjEMKQaI3`; after the auth import
+      it is the same in the shared project. *Blocked in auto mode as a
+      permission grant — user must name it (or create it in the console;
+      FTO has no About page, the uid also shows via
+      `OOAccount.user.uid` in the browser console).*
+- [~] Verify: anon rule probes against the live project all correct
+      2026-07-13 (users read 403, admins read 403, fto meta write 403,
+      users/x/puzzles/fto write 403, world-readable meta read passes as
+      404-missing). Still to do after sign-in: user doc lands at
+      users/{uid}/puzzles/fto with the right shape, trainer/solver progress
+      syncs. This validates the whole shared stack.
 
 ## Phase 5 — Skewb cutover (~1 hr)
 
