@@ -23,20 +23,19 @@ same backend). Two live problems until fixed:
       in the old projects' Auth authorized domains.~~ **Fixed 2026-07-13:**
       both subdomains added to the old projects' authorized domains and
       verified via the identitytoolkit config API.
-- [ ] **Only the root path redirects; every deep link 404s**
-      (pyraminx.net/oo.html, skewbiks.com/oo.html, etc. — launch links and
-      the ENG313 submission point at these). Root cause found 2026-07-13:
-      both old domains are on **GoDaddy nameservers using GoDaddy Domain
-      Forwarding**, which is a fixed-destination redirect with no
-      path/query preservation (deep paths 404 at its servers; HEAD gets
-      405). Fix: add pyraminx.net and skewbiks.com as free zones in the
-      Cloudflare account that already holds twistytools.com, switch
-      nameservers at GoDaddy, add a proxied dummy A record (192.0.2.1) for
-      apex + www, then one dynamic redirect rule per zone:
-      match `http.host in {"pyraminx.net" "www.pyraminx.net"}`, target
-      `concat("https://pyraminx.twistytools.com", http.request.uri.path)`,
-      preserve query string, 301. Same for skewbiks.com →
-      skewb.twistytools.com.
+- [~] **Deep-link 404s: nearly fixed.** Root cause was GoDaddy Domain
+      Forwarding (fixed-destination, no path preservation). Both zones
+      moved to Cloudflare 2026-07-13 with dynamic path-preserving 301s.
+      Verified working: pyraminx.net root/deep/query/http/https,
+      www.skewbiks.com and skewbiks.com over http (path + query preserved).
+      Remaining:
+      - [ ] The pyraminx.net redirect rule doesn't match `www.pyraminx.net`
+            (404s). Edit the rule's filter to
+            `http.host in {"pyraminx.net" "www.pyraminx.net"}` or switch it
+            to "All incoming requests".
+      - [ ] skewbiks.com over https fails TLS handshake: the new zone's
+            Universal SSL cert is still issuing (SSL/TLS → Edge
+            Certificates). No action needed, just recheck later.
 - Demo-mode localStorage on the old origins is now stranded behind the
   redirects (the planned "sign in to keep your progress" banner never
   shipped before the flip). Nothing cheap recovers it.
