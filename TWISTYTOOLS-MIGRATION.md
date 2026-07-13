@@ -118,15 +118,13 @@ admins/{uid}                     ← global; one bootstrap covers all sites
       namespaced paths, run against the emulator — done 2026-07-13: 47/47
       (adds cross-puzzle moderator isolation, per-puzzle bounds/totals,
       notation, fto lockout, users/{uid}/puzzles/{puzzle} subtree).
-- [ ] Deploy rules to `twistytools` from the hub repo. *(Ready; needs the
-      user to authorize the production deploy — replaces the deny-all
-      ruleset on the empty project, zero user risk.)*
-- [ ] **Deploy the pyraminx repo's post-audit rules to OLD `pyraminx-oo`.**
-      Verified 2026-07-13: the LIVE ruleset there is still pre-audit (no
-      meta shape pinning, forgeable reviewedBy, non-single-use invites, no
-      name-privacy pin) while the live client already writes the post-audit
-      way. Run in the pyraminx repo: `firebase deploy --only firestore:rules
-      --project pyraminx-oo`. Gates deleting that repo's rules files.
+- [x] Deploy rules to `twistytools` from the hub repo — deployed and
+      verified live 2026-07-13 (fetched the deployed ruleset; byte-for-byte
+      the hub file).
+- [x] **Deploy the pyraminx repo's post-audit rules to OLD `pyraminx-oo`** —
+      deployed and verified live 2026-07-13. (Until then the live ruleset
+      was still pre-audit: no meta shape pinning, forgeable reviewedBy,
+      non-single-use invites, no name-privacy pin.)
 - [~] Delete `firestore.rules` / `firebase.json` from the three puzzle repos
       (leave a README pointer to the hub repo).
       - [x] FTO: removed + README pointer, pushed 2026-07-13 (`5f30328`).
@@ -134,9 +132,9 @@ admins/{uid}                     ← global; one bootstrap covers all sites
             parallel session (diverged: local trainer commit vs remote CNAME
             commit); clean up after it settles. Also remove its stale
             `test/firestore.rules.test.mjs` + `test:rules` script.
-      - [ ] Pyraminx: deferred until the pyraminx-oo rules deploy above
-            lands (the repo's rules file is the deploy source). Also remove
-            its `test/firestore.rules.test.mjs` + `test:rules` script.
+      - [x] Pyraminx: removed rules files + rules tests + `test:rules`
+            script; SETUP/README/CLAUDE pointers to the hub repo; pushed
+            2026-07-13 (`0dc02f1`).
 
 ## Phase 3 — Client refactor on a branch (2–3 hrs, code)
 
