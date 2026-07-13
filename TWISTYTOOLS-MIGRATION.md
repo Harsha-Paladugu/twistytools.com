@@ -128,23 +128,42 @@ admins/{uid}                     ← global; one bootstrap covers all sites
 - [~] Delete `firestore.rules` / `firebase.json` from the three puzzle repos
       (leave a README pointer to the hub repo).
       - [x] FTO: removed + README pointer, pushed 2026-07-13 (`5f30328`).
-      - [ ] Skewb: deferred 2026-07-13 — the local repo has an active
-            parallel session (diverged: local trainer commit vs remote CNAME
-            commit); clean up after it settles. Also remove its stale
-            `test/firestore.rules.test.mjs` + `test:rules` script.
+      - [~] Skewb: the cleanup (rules files, .firebaserc, rules tests,
+            `test:rules` script, doc pointers) rides the
+            `twistytools-cutover` branch and lands at the Phase 5 merge;
+            main stays untouched for the parallel session working there.
       - [x] Pyraminx: removed rules files + rules tests + `test:rules`
             script; SETUP/README/CLAUDE pointers to the hub repo; pushed
             2026-07-13 (`0dc02f1`).
 
 ## Phase 3 — Client refactor on a branch (2–3 hrs, code)
 
-- [ ] Pyraminx repo, on a branch: add `puzzle: "pyraminx"` to `js/config.js`,
-      add a path-prefix helper, route Firestore references through it —
-      `js/account.js` has 2 refs (`users/{uid}` → account doc +
-      `users/{uid}/puzzles/pyraminx`), `js/oo.js` ~24. Swap the firebase config
-      block to `twistytools`. **Do not merge yet** — this branch is the cutover.
-- [ ] Apply the same diff to the skewb repo (fork; the patch mostly transfers).
-- [ ] FTO: it's in demo mode, so just paste the config with `puzzle: "fto"`.
+- [x] Pyraminx repo, branch **`twistytools-cutover`** (pushed 2026-07-13):
+      `puzzle: "pyraminx"` + twistytools-3bf66 config; account.js writes
+      users/{uid}/puzzles/pyraminx (parent account doc never written);
+      oo.js routes all census refs through pdoc/pcol helpers under
+      puzzles/pyraminx (21 refs; admins stays global); **CSP frame-src on
+      all six pages updated to twistytools-3bf66.firebaseapp.com** (found
+      during implementation — old host would have blocked sign-in);
+      restamped, check:fresh + engine tests pass. **Do not merge until
+      Phase 6.**
+- [x] Skewb repo, branch **`twistytools-cutover`** (pushed 2026-07-13):
+      same refactor with `puzzle: "skewb"`, plus the post-audit client
+      parity the deployed rules enforce (reviewedBy = acting uid, invites
+      lowercased + consumed on accept, empty name when showName is off).
+      The Phase 2 rules-file cleanup rides this branch too (main hosts
+      parallel work). Restamped; build + engine tests pass. **Do not merge
+      until Phase 5.**
+- [x] FTO repo, branch **`twistytools-cutover`** (pushed 2026-07-13):
+      config swaps firebase:null for twistytools-3bf66 with `puzzle:
+      "fto"`; account.js → users/{uid}/puzzles/fto; stale .firebaserc
+      removed; restamped; build + 67 engine tests pass. Merge at Phase 4.
+- All three branches were built and adversarially audited against the
+  DEPLOYED ruleset (write shapes, path parity, leftover refs, stale
+  stamps). Also fixed 2026-07-13: the Firebase CLI configstore had a
+  directory override pointing the hub repo at `pyraminx-oo` (left by MCP
+  project switching) — a bare `firebase deploy` from the hub would have
+  hit the live project. Repointed to twistytools-3bf66.
 
 ## Phase 4 — FTO goes first (30 min, greenfield, zero risk)
 
