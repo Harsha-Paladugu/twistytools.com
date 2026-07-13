@@ -41,11 +41,12 @@ complete the backend migration.
 
 ## Phase 0 — Inventory (15 min, Firebase console)
 
-- [ ] In the `skewbiks` project console, check **Authentication → Users** and
-      the `solutions` / `users` collections. Decide: does skewb have real user
-      data worth migrating, or just your own test account?
-      *(Needs your eyes or explicit permission: exporting the user list was
-      blocked as PII handling on 2026-07-13.)*
+- [x] Skewb data: **worth migrating.** Firestore counts (read 2026-07-13,
+      doc counts only): 5 `users` docs created 2026-07-06..10, 1 approved
+      solution, 0 moderators, census at done=1/132315. Small but real; the
+      Phase 6 copy script pointed at `skewbiks` → `twistytools` handles it
+      in seconds. (Auth user list itself still unexported — not needed for
+      this decision.)
 - [x] In `pyraminx-oo`, note the Firestore **region**: **`us-east5`**
       (verified via CLI 2026-07-13). Skewbiks is `nam5` — only matters if
       Phase 0 decides its data is worth copying.
@@ -106,17 +107,36 @@ users/{uid}/puzzles/{puzzle}     ← per-puzzle progress
 admins/{uid}                     ← global; one bootstrap covers all sites
 ```
 
-- [ ] Port pyraminx's `firestore.rules` to one ruleset parameterized on
-      `{puzzle}`. **Port the post-audit version** (2026-07-10 fixes: meta
-      doc shape/bounds validation — the "meta-vandalism" fix — plus single-use
-      moderator invites and `reviewedBy` as uid). As of 2026-07-13 those fixes
-      were still uncommitted working-tree changes in the pyraminx repo; verify
-      they've been committed there before porting.
-- [ ] Move `test/firestore.rules.test.mjs` into the hub repo, extend for the
-      namespaced paths, run against the emulator.
-- [ ] Deploy rules to `twistytools` from the hub repo.
-- [ ] Delete `firestore.rules` / `firebase.json` from the three puzzle repos
+- [x] Port pyraminx's `firestore.rules` to one ruleset parameterized on
+      `{puzzle}` — done 2026-07-13 from the post-audit version (committed in
+      the pyraminx repo as `319f0b4`). Per-puzzle constants map: pyraminx
+      nslots 3,732,480 / total 78,012 / doneMap 13,004 b64; skewb 9,447,840 /
+      132,315 / 22,056 plus its required `notation in ['wca','ns']` field.
+      FTO has no census so no cfg entry — census writes under `puzzles/fto`
+      deny via the failed lookup.
+- [x] Move `test/firestore.rules.test.mjs` into the hub repo, extend for the
+      namespaced paths, run against the emulator — done 2026-07-13: 47/47
+      (adds cross-puzzle moderator isolation, per-puzzle bounds/totals,
+      notation, fto lockout, users/{uid}/puzzles/{puzzle} subtree).
+- [ ] Deploy rules to `twistytools` from the hub repo. *(Ready; needs the
+      user to authorize the production deploy — replaces the deny-all
+      ruleset on the empty project, zero user risk.)*
+- [ ] **Deploy the pyraminx repo's post-audit rules to OLD `pyraminx-oo`.**
+      Verified 2026-07-13: the LIVE ruleset there is still pre-audit (no
+      meta shape pinning, forgeable reviewedBy, non-single-use invites, no
+      name-privacy pin) while the live client already writes the post-audit
+      way. Run in the pyraminx repo: `firebase deploy --only firestore:rules
+      --project pyraminx-oo`. Gates deleting that repo's rules files.
+- [~] Delete `firestore.rules` / `firebase.json` from the three puzzle repos
       (leave a README pointer to the hub repo).
+      - [x] FTO: removed + README pointer, pushed 2026-07-13 (`5f30328`).
+      - [ ] Skewb: deferred 2026-07-13 — the local repo has an active
+            parallel session (diverged: local trainer commit vs remote CNAME
+            commit); clean up after it settles. Also remove its stale
+            `test/firestore.rules.test.mjs` + `test:rules` script.
+      - [ ] Pyraminx: deferred until the pyraminx-oo rules deploy above
+            lands (the repo's rules file is the deploy source). Also remove
+            its `test/firestore.rules.test.mjs` + `test:rules` script.
 
 ## Phase 3 — Client refactor on a branch (2–3 hrs, code)
 
