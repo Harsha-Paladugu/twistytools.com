@@ -19,12 +19,10 @@ The repo CNAME flips and old-domain 301s (parts of Phases 5 and 6) happened on
 subdomains, which still run against the OLD Firebase projects (fine for data,
 same backend). Two live problems until fixed:
 
-- [ ] **Sign-in is broken on both new origins.** The new subdomains are not in
-      the old projects' Auth authorized domains (verified via the
-      identitytoolkit config API 2026-07-13). Console fix, one minute each:
-      Authentication → Settings → Authorized domains — add
-      `pyraminx.twistytools.com` to `pyraminx-oo` and
-      `skewb.twistytools.com` to `skewbiks`.
+- [x] **Sign-in is broken on both new origins.** ~~The new subdomains are not
+      in the old projects' Auth authorized domains.~~ **Fixed 2026-07-13:**
+      both subdomains added to the old projects' authorized domains and
+      verified via the identitytoolkit config API.
 - [ ] **Only the root path redirects; every deep link 404s**
       (pyraminx.net/oo.html, skewbiks.com/oo.html, etc. — launch links and
       the ENG313 submission may point at these). Make the Cloudflare
