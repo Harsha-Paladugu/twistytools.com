@@ -23,19 +23,16 @@ same backend). Two live problems until fixed:
       in the old projects' Auth authorized domains.~~ **Fixed 2026-07-13:**
       both subdomains added to the old projects' authorized domains and
       verified via the identitytoolkit config API.
-- [~] **Deep-link 404s: nearly fixed.** Root cause was GoDaddy Domain
-      Forwarding (fixed-destination, no path preservation). Both zones
-      moved to Cloudflare 2026-07-13 with dynamic path-preserving 301s.
-      Verified working: pyraminx.net root/deep/query/http/https,
-      www.skewbiks.com and skewbiks.com over http (path + query preserved).
-      Remaining:
-      - [ ] The pyraminx.net redirect rule doesn't match `www.pyraminx.net`
-            (404s). Edit the rule's filter to
-            `http.host in {"pyraminx.net" "www.pyraminx.net"}` or switch it
-            to "All incoming requests".
-      - [ ] skewbiks.com over https fails TLS handshake: the new zone's
-            Universal SSL cert is still issuing (SSL/TLS → Edge
-            Certificates). No action needed, just recheck later.
+- [x] **Deep-link 404s: fixed and verified 2026-07-13.** Root cause was
+      GoDaddy Domain Forwarding (fixed-destination, no path preservation).
+      Both zones moved to Cloudflare with an all-incoming dynamic redirect
+      rule per zone (301, `concat(target, http.request.uri.path)`, preserve
+      query string). Full battery verified: apex + www, root + deep paths +
+      query strings, http + https, on both pyraminx.net and skewbiks.com.
+
+**Alert resolved 2026-07-13.** Both issues fixed and verified; the early
+domain cutover is now stable on the old Firebase projects until Phases 2–6
+complete the backend migration.
 - Demo-mode localStorage on the old origins is now stranded behind the
   redirects (the planned "sign in to keep your progress" banner never
   shipped before the flip). Nothing cheap recovers it.
@@ -148,8 +145,9 @@ admins/{uid}                     ← global; one bootstrap covers all sites
       (the stamp pipeline handles asset hashes).
 - [ ] Merge skewb's config/refactor branch. If Phase 0 found real data, run the
       Phase 6 copy script pointed at `skewbiks` → `twistytools` first.
-- [~] 301 `skewbiks.com` → `skewb.twistytools.com`: live 2026-07-13 but
-      root-only; must be path-preserving (see status alert).
+- [x] 301 `skewbiks.com` → `skewb.twistytools.com`: done via Cloudflare
+      dynamic redirect, path + query preserving, apex + www, verified
+      2026-07-13.
 - [x] Flip the hub landing page's Skewb card from skewbiks.com to
       skewb.twistytools.com (hub repo `index.html`) — done 2026-07-13.
 
@@ -176,9 +174,10 @@ admins/{uid}                     ← global; one bootstrap covers all sites
       already serves from pyraminx.twistytools.com against old Firebase.)*
 - [ ] Immediately deploy a **deny-all-writes** ruleset to old `pyraminx-oo`
       so cached pages can't write to the abandoned database (split-brain guard).
-- [~] DNS: 301 `pyraminx.net` → `pyraminx.twistytools.com`: live 2026-07-13
-      but root-only; must be path-preserving (see status alert). Keep
-      long-term — launch links and the ENG313 submission point at it.
+- [x] DNS: 301 `pyraminx.net` → `pyraminx.twistytools.com`: done via
+      Cloudflare dynamic redirect, path + query preserving, apex + www,
+      verified 2026-07-13. Keep the zone and rule long-term — launch links
+      point at pyraminx.net.
 - [x] Flip the hub landing page's Pyraminx card from pyraminx.net to
       pyraminx.twistytools.com (hub repo `index.html`) — done 2026-07-13.
 - [ ] Verify live: sign in (same uid as before), Moderation tab loads (proves
