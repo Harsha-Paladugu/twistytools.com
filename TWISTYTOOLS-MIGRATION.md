@@ -49,13 +49,15 @@ Pyraminx migrates last because it is the only site with real users.
 - [ ] Authorized domains: `twistytools.com`, `pyraminx.twistytools.com`,
       `skewb.twistytools.com`, `fto.twistytools.com`, `localhost`.
       *(Console-only; not verifiable via CLI.)*
-- [ ] Create the hub repo (`twistytools.com`): apex landing page on GitHub
+- [x] Create the hub repo (`twistytools.com`): apex landing page on GitHub
       Pages (`CNAME twistytools.com`). It becomes the **only** home of
       `firebase.json`, `firestore.rules`, the rules tests, and migration
       scripts. (A rules deploy replaces the whole project ruleset — exactly one
       repo may own it.)
-      *(Repo created and cloned to `C:\Projects\twistytools.com` 2026-07-13;
-      landing page, CNAME file, and Pages setup still to do.)*
+      *(Done 2026-07-13: landing page + CNAME pushed, Pages enabled on
+      main branch root, https://twistytools.com verified serving. Landing
+      cards link to each site's current home; flip skewb/pyraminx links at
+      their cutovers.)*
 - [x] DNS: apex + all three subdomains resolve via Cloudflare proxy as of
       2026-07-13. fto.twistytools.com serves the FTO site; skewb. and
       pyraminx. subdomains already serve live mirrors of skewbiks.com /
@@ -116,6 +118,8 @@ admins/{uid}                     ← global; one bootstrap covers all sites
       Phase 6 copy script pointed at `skewbiks` → `twistytools` first.
 - [ ] 301 `skewbiks.com` → `skewb.twistytools.com` at the registrar/Cloudflare
       level (GitHub Pages can't serve the old domain *and* redirect it).
+- [ ] Flip the hub landing page's Skewb card from skewbiks.com to
+      skewb.twistytools.com (hub repo `index.html`).
 
 ## Phase 6 — Pyraminx cutover (half a day, the only one with users)
 
@@ -136,6 +140,8 @@ admins/{uid}                     ← global; one bootstrap covers all sites
       so cached pages can't write to the abandoned database (split-brain guard).
 - [ ] DNS: 301 `pyraminx.net` → `pyraminx.twistytools.com`. Keep long-term —
       launch links and the ENG313 submission point at it.
+- [ ] Flip the hub landing page's Pyraminx card from pyraminx.net to
+      pyraminx.twistytools.com (hub repo `index.html`).
 - [ ] Verify live: sign in (same uid as before), Moderation tab loads (proves
       `admins/{uid}` + rules), census renders, done-bitmap updates, trainer
       progress syncs.
