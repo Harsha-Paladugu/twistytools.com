@@ -17,18 +17,38 @@ Pyraminx migrates last because it is the only site with real users.
 - [ ] In the `skewbiks` project console, check **Authentication → Users** and
       the `solutions` / `users` collections. Decide: does skewb have real user
       data worth migrating, or just your own test account?
-- [ ] In `pyraminx-oo`, note the Firestore **region**. The new project must use
-      the same one — region is immutable.
+      *(Needs your eyes or explicit permission: exporting the user list was
+      blocked as PII handling on 2026-07-13.)*
+- [x] In `pyraminx-oo`, note the Firestore **region**: **`us-east5`**
+      (verified via CLI 2026-07-13). Skewbiks is `nam5` — only matters if
+      Phase 0 decides its data is worth copying.
 
 ## Phase 1 — Create the shared project (45 min, console + DNS)
 
-- [ ] Create Firebase project **`twistytools`**. Add a web app; keep the config
-      block. Create the Firestore database (same region as pyraminx-oo,
-      production mode).
+- [x] Create Firebase project **`twistytools`** — done 2026-07-13. Actual
+      project ID is **`twistytools-3bf66`** (bare `twistytools` was taken).
+      Web app registered; Firestore `(default)` database created in
+      **us-east5** (matches pyraminx-oo) with deny-all rules (production
+      mode) — all verified via CLI 2026-07-13. Web SDK config:
+
+      ```js
+      {
+        apiKey: "AIzaSyC5b82XjgZ26GsVvgTO0nCK_KiltQhRozM",
+        authDomain: "twistytools-3bf66.firebaseapp.com",
+        projectId: "twistytools-3bf66",
+        storageBucket: "twistytools-3bf66.firebasestorage.app",
+        messagingSenderId: "446558622358",
+        appId: "1:446558622358:web:b99303e5695392108e68b7",
+        measurementId: "G-1435QXXZM8"
+      }
+      ```
 - [ ] Auth: enable **Google** provider, set support email, set OAuth consent
       screen public name to **TwistyTools** (what users see in the popup).
+      *(Console-only; not verifiable via CLI — confirm even if you think it's
+      done.)*
 - [ ] Authorized domains: `twistytools.com`, `pyraminx.twistytools.com`,
       `skewb.twistytools.com`, `fto.twistytools.com`, `localhost`.
+      *(Console-only; not verifiable via CLI.)*
 - [ ] Create the hub repo (`twistytools.com`): apex landing page on GitHub
       Pages (`CNAME twistytools.com`). It becomes the **only** home of
       `firebase.json`, `firestore.rules`, the rules tests, and migration
@@ -36,9 +56,12 @@ Pyraminx migrates last because it is the only site with real users.
       repo may own it.)
       *(Repo created and cloned to `C:\Projects\twistytools.com` 2026-07-13;
       landing page, CNAME file, and Pages setup still to do.)*
-- [ ] DNS: apex A/ALIAS records for twistytools.com → GitHub Pages; CNAME
-      records for the three subdomains → `<youruser>.github.io`. (FTO's repo is
-      already switched; pyraminx and skewb repos still carry old CNAME files.)
+- [x] DNS: apex + all three subdomains resolve via Cloudflare proxy as of
+      2026-07-13. fto.twistytools.com serves the FTO site; skewb. and
+      pyraminx. subdomains already serve live mirrors of skewbiks.com /
+      pyraminx.net (canonicals still point at the old domains, which keeps
+      SEO safe until cutover). The apex 404s until the hub repo gets its
+      CNAME + Pages setup.
 
 ## Phase 2 — Shared schema + rules (2–3 hrs, code)
 
