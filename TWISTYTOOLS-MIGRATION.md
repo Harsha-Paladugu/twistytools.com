@@ -171,29 +171,33 @@ admins/{uid}                     ← global; one bootstrap covers all sites
       (Merged together with the parallel session's 1LP alg commit; stamp
       conflicts resolved by restamping; check:fresh passed; verified live:
       fto.twistytools.com serves config.js?v=638e6cf4 → twistytools-3bf66.)
-- [~] **Auth import BEFORE first sign-in (sequencing fix, found 2026-07-13):**
-      Phase 6's `auth:import` preserves old uids, but any Google sign-in on a
-      twistytools origin before the import mints a FRESH uid for that email
-      and the later import collides. Done for pyraminx 2026-07-13: **30
-      accounts exported from pyraminx-oo and imported into
-      twistytools-3bf66**, owner's uid verified present with the Google
-      provider linked; export file deleted after import. This also
-      pre-completes Phase 6's auth step. Still to do: the same for
-      `skewbiks` (5 users; needs the user to name that export; overlapping
-      emails will be skipped and need a uid remap in the Phase 5 data
-      copy).
-- [ ] Create `admins/{uid}` — once, for all three sites. The owner's uid in
-      pyraminx-oo is `yajUvP6xgINGQ7vIVtfnjEMKQaI3`; after the auth import
-      it is the same in the shared project. *Blocked in auto mode as a
-      permission grant — user must name it (or create it in the console;
-      FTO has no About page, the uid also shows via
-      `OOAccount.user.uid` in the browser console).*
-- [~] Verify: anon rule probes against the live project all correct
-      2026-07-13 (users read 403, admins read 403, fto meta write 403,
-      users/x/puzzles/fto write 403, world-readable meta read passes as
-      404-missing). Still to do after sign-in: user doc lands at
-      users/{uid}/puzzles/fto with the right shape, trainer/solver progress
-      syncs. This validates the whole shared stack.
+- [x] **Auth import — done for both projects 2026-07-13/14, with one plot
+      twist.** 30 pyraminx-oo accounts + 6 skewbiks accounts imported into
+      twistytools-3bf66 (Google-only, no hash params; export files deleted
+      after import). BUT the owner signed in on fto.twistytools.com at
+      21:35Z, BEFORE the import, so Google minted a fresh account that owns
+      the provider/email index. **The owner's canonical twistytools uid is
+      `ADnWIPi1r2TWzKxRfEEGJQnxmQI3`** (verified: email + provider resolve
+      there; active session). The imported copies of the owner's account
+      (`yajUvP6xgINGQ7vIVtfnjEMKQaI3` from pyraminx, `Yvumor4lPrTXurUN2tOTy8jxgEg1`
+      from skewb) are inert orphans — delete them in the console during
+      Phase 7 cleanup or ignore. All OTHER users' uids are preserved 1:1.
+
+      **UID REMAP TABLE for the Phase 5/6 data-copy scripts (owner only):**
+      - pyraminx: `yajUvP6xgINGQ7vIVtfnjEMKQaI3` → `ADnWIPi1r2TWzKxRfEEGJQnxmQI3`
+        (users doc + any moderators/admins/reviewedBy references)
+      - skewb: `Yvumor4lPrTXurUN2tOTy8jxgEg1` → `ADnWIPi1r2TWzKxRfEEGJQnxmQI3`
+- [ ] Create `admins/ADnWIPi1r2TWzKxRfEEGJQnxmQI3` — once, for all three
+      sites. *Still blocked in auto mode (permission grant); either the
+      user names that exact uid to Claude, or console: Firestore → admins →
+      Add document, id `ADnWIPi1r2TWzKxRfEEGJQnxmQI3`, one field `id` = ""
+      (shape matches the pyraminx-oo bootstrap doc).*
+- [x] Verify — **the shared stack works end to end.** Anon rule probes all
+      correct 2026-07-13 (users read 403, admins read 403, fto meta write
+      403, cross-user write 403, world-readable meta passes). Signed-in
+      verification confirmed server-side 2026-07-14: the owner's session
+      wrote `users/ADnWIPi1.../puzzles/fto` with exactly the expected shape
+      (solver {beam, orient}, trainer state string, updatedAt).
 
 ## Phase 5 — Skewb cutover (~1 hr)
 
