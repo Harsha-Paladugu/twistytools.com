@@ -171,17 +171,17 @@ admins/{uid}                     ← global; one bootstrap covers all sites
       (Merged together with the parallel session's 1LP alg commit; stamp
       conflicts resolved by restamping; check:fresh passed; verified live:
       fto.twistytools.com serves config.js?v=638e6cf4 → twistytools-3bf66.)
-- [ ] **Auth import BEFORE first sign-in (sequencing fix, found 2026-07-13):**
+- [~] **Auth import BEFORE first sign-in (sequencing fix, found 2026-07-13):**
       Phase 6's `auth:import` preserves old uids, but any Google sign-in on a
-      twistytools origin before the import mints a FRESH uid for that email;
-      the later import then collides (same email, two uids; migrated data
-      keys to the orphaned one). Nobody has signed in yet, so import NOW:
-      `firebase auth:export` from `pyraminx-oo` → `auth:import` into
-      `twistytools-3bf66` (Google-only users, uids preserved, invisible to
-      users). Skewbiks' 5 users can import in the same pass; overlapping
-      emails (the owner's own account) will be skipped and need a uid remap
-      in the Phase 5 data copy. *Needs explicit user authorization (user
-      table export/import).*
+      twistytools origin before the import mints a FRESH uid for that email
+      and the later import collides. Done for pyraminx 2026-07-13: **30
+      accounts exported from pyraminx-oo and imported into
+      twistytools-3bf66**, owner's uid verified present with the Google
+      provider linked; export file deleted after import. This also
+      pre-completes Phase 6's auth step. Still to do: the same for
+      `skewbiks` (5 users; needs the user to name that export; overlapping
+      emails will be skipped and need a uid remap in the Phase 5 data
+      copy).
 - [ ] Create `admins/{uid}` — once, for all three sites. The owner's uid in
       pyraminx-oo is `yajUvP6xgINGQ7vIVtfnjEMKQaI3`; after the auth import
       it is the same in the shared project. *Blocked in auto mode as a
